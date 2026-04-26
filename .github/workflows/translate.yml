@@ -1,1 +1,39 @@
+name: Dich EPUB Tieng Viet
 
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cai thu vien
+        run: pip install ebooklib beautifulsoup4 lxml tqdm requests
+
+      - name: Dich tat ca EPUB
+        run: |
+          find . -name "*.epub" ! -name "*TiengViet*" ! -path "*/.git/*" | while read EPUB; do
+            echo "=== Dich: $EPUB ==="
+            python translate.py "$EPUB"
+          done
+
+      - name: Kiem tra ket qua
+        run: find . -name "*TiengViet.epub" -exec ls -lh {} \;
+
+      - name: Upload ket qua
+        uses: actions/upload-artifact@v4
+        with:
+          name: epub-tieng-viet
+          path: "**/*TiengViet.epub"
+          retention-days: 7
