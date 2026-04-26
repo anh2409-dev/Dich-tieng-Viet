@@ -1,0 +1,35 @@
+name: 🇻🇳 Dịch 1 EPUB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install libs
+        run: pip install -r requirements.txt
+
+      - name: Check file
+        run: |
+          if [ ! -f "book.epub" ]; then
+            echo "❌ Không tìm thấy book.epub"
+            exit 1
+          fi
+
+      - name: Translate
+        run: python translate.py book.epub
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: translated
+          path: "*_TiengViet.epub"
