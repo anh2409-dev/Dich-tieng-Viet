@@ -1,0 +1,36 @@
+name: 🇻🇳 Dịch EPUB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Check file
+        run: |
+          if [ ! -f "book.epub" ]; then
+            echo "❌ Không có book.epub"
+            exit 1
+          fi
+
+      - name: Run translate
+        run: python translate.py book.epub
+
+      - name: Debug files
+        run: ls -lh
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: result
+          path: book_TiengViet.epub
