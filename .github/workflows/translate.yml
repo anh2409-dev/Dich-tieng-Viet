@@ -1,0 +1,44 @@
+name: 📚 EPUB Translator (Production)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Find EPUB
+        id: find_epub
+        run: |
+          FILE=$(find . -name "*.epub" ! -name "*Translated*" | head -n 1)
+          if [ -z "$FILE" ]; then
+            echo "❌ Không tìm thấy EPUB"
+            exit 1
+          fi
+          echo "FILE=$FILE" >> $GITHUB_ENV
+          echo "📖 Found: $FILE"
+
+      - name: Translate
+        run: python translate.py "$FILE"
+
+      - name: Debug files
+        run: |
+          echo "==== FILE LIST ===="
+          ls -lh
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: translated
+          path: "*_Translated.epub"
