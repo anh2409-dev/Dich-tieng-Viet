@@ -5,13 +5,9 @@ from bs4 import BeautifulSoup
 FILE = sys.argv[1]
 
 CACHE_PATH = "cache.json"
-STATE_PATH = "state.json"
-
 CACHE = json.load(open(CACHE_PATH)) if os.path.exists(CACHE_PATH) else {}
-STATE = json.load(open(STATE_PATH)) if os.path.exists(STATE_PATH) else {"done": []}
 
-def save_all():
-    json.dump(STATE, open(STATE_PATH, "w"))
+def save_cache():
     json.dump(CACHE, open(CACHE_PATH, "w"), ensure_ascii=False)
 
 ENDPOINTS = [
@@ -21,13 +17,7 @@ ENDPOINTS = [
 
 def call_api(text):
     url = random.choice(ENDPOINTS)
-    params = {
-        "client": "gtx",
-        "sl": "auto",
-        "tl": "vi",
-        "dt": "t",
-        "q": text
-    }
+    params = {"client":"gtx","sl":"auto","tl":"vi","dt":"t","q": text}
     r = requests.get(url, params=params, timeout=10)
     return "".join([x[0] for x in r.json()[0] if x[0]])
 
@@ -35,17 +25,17 @@ def translate(text):
     if text in CACHE:
         return CACHE[text]
 
-    for i in range(3):  # retry nhẹ
+    for _ in range(3):
         try:
-            result = call_api(text)
-            if result.strip() != text.strip():
-                CACHE[text] = result
-                time.sleep(0.5 + random.random())
-                return result
+            out = call_api(text)
+            if out.strip() != text.strip():
+                CACHE[text] = out
+                time.sleep(0.6 + random.random())
+                return out
         except:
             time.sleep(2)
 
-    return text  # fail thì giữ nguyên (không treo)
+    return text  # fail nhanh, không treo
 
 def smart_chunk(text, max_len=1200):
     sents = re.split(r'(?<=[.!?])\s+', text)
@@ -61,10 +51,6 @@ def smart_chunk(text, max_len=1200):
     return chunks
 
 def process_item(item):
-    name = item.get_name()
-    if name in STATE["done"]:
-        return
-
     soup = BeautifulSoup(item.get_content().decode('utf-8', errors='ignore'), 'lxml')
 
     tags = soup.find_all(['p','h1','h2','h3','li'])
@@ -75,10 +61,7 @@ def process_item(item):
 
     chunks = smart_chunk("\n".join(texts))
 
-    translated = []
-    for c in chunks:
-        translated.append(translate(c))
-
+    translated = [translate(c) for c in chunks]
     lines = "\n".join(translated).split("\n")
 
     i = 0
@@ -89,19 +72,19 @@ def process_item(item):
 
     item.set_content(str(soup).encode('utf-8'))
 
-    STATE["done"].append(name)
-    save_all()
-
 print(f"📖 Reading: {FILE}")
 
 book = epub.read_epub(FILE)
-
 items = [it for it in book.get_items() if it.get_type() == ITEM_DOCUMENT]
 
 for item in items:
     process_item(item)
 
-OUT = FILE.replace(".epub", "_TiengViet.epub")
+# 🔥 auto output name
+base = os.path.splitext(FILE)[0]
+OUT = base + "_Translated.epub"
+
 epub.write_epub(OUT, book)
+save_cache()
 
 print(f"✅ DONE: {OUT}")
