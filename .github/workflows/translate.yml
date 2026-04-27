@@ -1,0 +1,63 @@
+name: 📚 EPUB Translate (Hybrid)
+
+on:
+  workflow_dispatch:
+    inputs:
+      filename:
+        description: "Tên file EPUB (vd: mybook.epub)"
+        required: true
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 🔁 Khôi phục cache/state để resume nhanh hơn
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache.json
+            state.json
+          key: epub-cache-${{ hashFiles('**/*.epub') }}
+          restore-keys: |
+            epub-cache-
+
+      - name: Validate file
+        run: |
+          FILE="${{ github.event.inputs.filename }}"
+          if [ ! -f "$FILE" ]; then
+            echo "❌ Không tìm thấy file: $FILE"
+            ls -lh
+            exit 1
+          fi
+          echo "📖 Using file: $FILE"
+
+      - name: Run translate
+        run: |
+          python translate.py "${{ github.event.inputs.filename }}"
+
+      - name: Debug files
+        run: |
+          echo "==== FILE LIST ===="
+          ls -lh
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: translated
+          path: "*_Translated.epub"
